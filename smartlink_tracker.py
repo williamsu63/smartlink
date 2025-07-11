@@ -62,23 +62,43 @@ def calculate_ctr():
 @app.route('/dashboard')
 def dashboard():
     template_id_filter = request.args.get('template_id')
-    click_count = 0
 
-    with open(LOG_FILE) as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if template_id_filter and row['template_id'] != template_id_filter:
-                continue
-            click_count += 1
+    if template_id_filter:
+        click_count = 0
+        with open(LOG_FILE) as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row['template_id'] == template_id_filter:
+                    click_count += 1
 
-    if click_count == 0:
-        return f"<h2>CTR Click Dashboard 📉</h2><p>Template ID: <strong>{template_id_filter or 'All'}</strong></p><p>No click data available. Try visiting a tracked link first.</p>"
+        if click_count == 0:
+            return f"<h2>CTR Click Dashboard 📉</h2><p>Template ID: <strong>{template_id_filter}</strong></p><p>No click data available. Try visiting a tracked link first.</p>"
 
-    return f"""
+        return f"""
+            <h2>CTR Click Dashboard 📊</h2>
+            <p>Template ID: <strong>{template_id_filter}</strong></p>
+            <p>Total Clicks: <strong>{click_count}</strong></p>
+        """
+    else:
+        click_counts = defaultdict(int)
+        with open(LOG_FILE) as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                click_counts[row['template_id']] += 1
+
+        if not click_counts:
+            return f"<h2>CTR Click Dashboard 📉</h2><p>No click data available. Try visiting a tracked link first.</p>"
+
+        sorted_counts = sorted(click_counts.items(), key=lambda x: x[1], reverse=True)
+        rows = ''.join(f"<tr><td>{tid}</td><td>{count}</td></tr>" for tid, count in sorted_counts)
+        html = f"""
         <h2>CTR Click Dashboard 📊</h2>
-        <p>Template ID: <strong>{template_id_filter or 'All'}</strong></p>
-        <p>Total Clicks: <strong>{click_count}</strong></p>
-    """
+        <table border="1" cellpadding="5">
+            <thead><tr><th>Template ID</th><th>Total Clicks</th></tr></thead>
+            <tbody>{rows}</tbody>
+        </table>
+        """
+        return html
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
