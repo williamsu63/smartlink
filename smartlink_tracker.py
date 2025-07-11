@@ -87,21 +87,24 @@ def dashboard():
         """
         return html
     else:
-        click_counts = defaultdict(int)
+        click_data = defaultdict(list)
         with open(LOG_FILE) as f:
             reader = csv.DictReader(f)
             for row in reader:
-                click_counts[row['template_id']] += 1
+                click_data[row['template_id']].append((row['timestamp'], row['account_id']))
 
-        if not click_counts:
+        if not click_data:
             return f"<h2>CTR Click Dashboard 📉</h2><p>No click data available. Try visiting a tracked link first.</p>"
 
-        sorted_counts = sorted(click_counts.items(), key=lambda x: x[1], reverse=True)
-        rows = ''.join(f"<tr><td>{tid}</td><td>{count}</td></tr>" for tid, count in sorted_counts)
+        rows = ''
+        for template_id, data in sorted(click_data.items(), key=lambda x: len(x[1]), reverse=True):
+            for timestamp, account_id in data:
+                rows += f"<tr><td>{template_id}</td><td>{timestamp}</td><td>{account_id}</td></tr>"
+
         html = f"""
         <h2>CTR Click Dashboard 📊</h2>
         <table border="1" cellpadding="5">
-            <thead><tr><th>Template ID</th><th>Total Clicks</th></tr></thead>
+            <thead><tr><th>Template ID</th><th>Timestamp</th><th>Account ID</th></tr></thead>
             <tbody>{rows}</tbody>
         </table>
         """
