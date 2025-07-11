@@ -12,7 +12,7 @@ LOG_FILE = 'click_log.csv'
 if not os.path.exists(LOG_FILE):
     with open(LOG_FILE, 'w', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(['timestamp', 'template_id', 'ip_address'])
+        writer.writerow(['timestamp', 'template_id', 'account_id', 'ip_address'])
 
 @app.route('/')
 def home():
@@ -21,10 +21,11 @@ def home():
 @app.route('/redirect')
 def track_and_redirect():
     template_id = request.args.get('template_id')
+    account_id = request.args.get('account_id')
     dest = request.args.get('dest')
 
-    if not template_id or not dest:
-        return "Missing 'template_id' or 'dest' parameters", 400
+    if not template_id or not dest or not account_id:
+        return "Missing 'template_id', 'account_id', or 'dest' parameters", 400
 
     user_ip = request.remote_addr
     timestamp = datetime.utcnow().isoformat()
@@ -32,7 +33,7 @@ def track_and_redirect():
     # Log the click
     with open(LOG_FILE, 'a', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow([timestamp, template_id, user_ip])
+        writer.writerow([timestamp, template_id, account_id, user_ip])
 
     return redirect(dest)
 
@@ -64,21 +65,27 @@ def dashboard():
     template_id_filter = request.args.get('template_id')
 
     if template_id_filter:
-        click_count = 0
+        click_data = []
         with open(LOG_FILE) as f:
             reader = csv.DictReader(f)
             for row in reader:
                 if row['template_id'] == template_id_filter:
-                    click_count += 1
+                    click_data.append((row['timestamp'], row['account_id']))
 
-        if click_count == 0:
+        if not click_data:
             return f"<h2>CTR Click Dashboard 📉</h2><p>Template ID: <strong>{template_id_filter}</strong></p><p>No click data available. Try visiting a tracked link first.</p>"
 
-        return f"""
+        rows = ''.join(f"<tr><td>{time}</td><td>{acct}</td></tr>" for time, acct in click_data)
+        html = f"""
             <h2>CTR Click Dashboard 📊</h2>
             <p>Template ID: <strong>{template_id_filter}</strong></p>
-            <p>Total Clicks: <strong>{click_count}</strong></p>
+            <p>Total Clicks: <strong>{len(click_data)}</strong></p>
+            <table border="1" cellpadding="5">
+                <thead><tr><th>Timestamp</th><th>Account ID</th></tr></thead>
+                <tbody>{rows}</tbody>
+            </table>
         """
+        return html
     else:
         click_counts = defaultdict(int)
         with open(LOG_FILE) as f:
