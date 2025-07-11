@@ -75,6 +75,9 @@ def dashboard():
     dates = sorted(daily_counts.keys())
     counts = [daily_counts[date] for date in dates]
 
+    if not dates:
+        return f"<h2>CTR Click Dashboard 📉</h2><p>Template ID: <strong>{template_id_filter or 'All'}</strong></p><p>No click data available. Try visiting a tracked link first.</p>"
+
     html = '''
     <html>
     <head>
