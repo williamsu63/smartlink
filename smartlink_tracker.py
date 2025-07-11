@@ -62,55 +62,23 @@ def calculate_ctr():
 @app.route('/dashboard')
 def dashboard():
     template_id_filter = request.args.get('template_id')
-    daily_counts = defaultdict(int)
+    click_count = 0
 
     with open(LOG_FILE) as f:
         reader = csv.DictReader(f)
         for row in reader:
             if template_id_filter and row['template_id'] != template_id_filter:
                 continue
-            date = row['timestamp'][:10]  # Extract YYYY-MM-DD
-            daily_counts[date] += 1
+            click_count += 1
 
-    dates = sorted(daily_counts.keys())
-    counts = [daily_counts[date] for date in dates]
-
-    if not dates:
+    if click_count == 0:
         return f"<h2>CTR Click Dashboard 📉</h2><p>Template ID: <strong>{template_id_filter or 'All'}</strong></p><p>No click data available. Try visiting a tracked link first.</p>"
 
-    html = '''
-    <html>
-    <head>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    </head>
-    <body>
-        <h2>CTR Click Dashboard 📈</h2>
-        <p>Template ID: <strong>{{ template_id }}</strong></p>
-        <canvas id="clickChart" width="600" height="300"></canvas>
-        <script>
-            const ctx = document.getElementById('clickChart').getContext('2d');
-            const chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: {{ dates }},
-                    datasets: [{
-                        label: 'Clicks per Day',
-                        data: {{ counts }},
-                        borderColor: 'blue',
-                        fill: false
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-        </script>
-    </body>
-    </html>
-    '''
-    return render_template_string(html, dates=dates, counts=counts, template_id=template_id_filter or "All")
+    return f"""
+        <h2>CTR Click Dashboard 📊</h2>
+        <p>Template ID: <strong>{template_id_filter or 'All'}</strong></p>
+        <p>Total Clicks: <strong>{click_count}</strong></p>
+    """
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
